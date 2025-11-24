@@ -1,3 +1,25 @@
+import sys
+import subprocess
+
+def install(package):
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# List all required packages here:
+required_packages = [
+    "albumentations",
+    "torch",
+    "torchvision",
+    "timm",
+    "streamlit",
+    "pillow",
+    "pytorch-grad-cam"
+]
+
+for pkg in required_packages:
+    try:
+        __import__(pkg if pkg != "pytorch-grad-cam" else "pytorch_grad_cam")
+    except ImportError:
+        install(pkg)
 # app.py - Streamlit Deployment for CliniScan Chest X-ray Classification
 
 import streamlit as st
