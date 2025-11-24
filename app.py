@@ -14,14 +14,14 @@ import gdown
 
 # Page configuration
 st.set_page_config(
-    page_title="🩻 CliniScan - Lung Abnormality Detection",
+    page_title="🫁 CliniScan - Chest X-ray Analyzer",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # GOOGLE DRIVE MODEL DOWNLOAD
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
 DETECTION_MODEL_ID = "1IzK4Y-wKDSLjLNUGv2tNDiaRyv0W2Iy6"
 CLASSIFICATION_MODEL_ID = "1Ao7o8DekO26M9DcsbwVVwTF3Fwkm7o6S"
@@ -30,10 +30,8 @@ CLASSIFICATION_MODEL_ID = "1Ao7o8DekO26M9DcsbwVVwTF3Fwkm7o6S"
 def download_models():
     os.makedirs("models/detection", exist_ok=True)
     os.makedirs("models/classification", exist_ok=True)
-    
     det_path = "models/detection/best.pt"
     clf_path = "models/classification/best_clf_model.pth"
-    
     if not os.path.exists(det_path):
         with st.spinner("Downloading detection model..."):
             try:
@@ -43,7 +41,6 @@ def download_models():
             except Exception as e:
                 st.error(f"Error: {e}")
                 return False, False
-
     if not os.path.exists(clf_path):
         with st.spinner("Downloading classification model..."):
             try:
@@ -53,21 +50,19 @@ def download_models():
             except Exception as e:
                 st.error(f"Error: {e}")
                 return True, False
-
     return True, True
 
-# Download models
 det_ready, clf_ready = download_models()
 
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # MODEL LOADING
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
 class EfficientNetClassifier(nn.Module):
     def __init__(self, num_classes=2, dropout=0.3):
         super().__init__()
         self.model = timm.create_model('efficientnet_b3', pretrained=False, num_classes=num_classes, drop_rate=dropout)
-    
+
     def forward(self, x):
         return self.model(x)
 
@@ -112,9 +107,9 @@ def load_detection_model():
 clf_model = load_classification_model()
 det_model = load_detection_model()
 
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # GRAD-CAM FOR EFFICIENTNET-B3
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
 def generate_gradcam(model, img_tensor):
     if model is None:
@@ -141,43 +136,53 @@ def generate_gradcam(model, img_tensor):
         st.error(f"Grad-CAM error: {e}")
         return None, None
 
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # INTERFACE & UI
-# -----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 
-st.title("🩻 CliniScan: AI-powered Detection")
+st.title("🫁 CliniScan: Chest X-ray Analyzer")
 st.markdown("""
 Effortlessly analyze chest X-rays for lung abnormalities.<br>
-**Upload an image**, review AI findings, and explore visual explanations.<br>
+<b>Upload an image</b>, review AI findings, and explore visual explanations.<br>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("About CliniScan")
-    st.markdown(
-        """
-        Detectable conditions (14 types):  
-        • Aortic enlargement  
-        • Atelectasis  
-        • Calcification  
-        • Cardiomegaly  
-        • Consolidation  
-        • ILD  
-        • Infiltration  
-        • Lung Opacity  
-        • Nodule/Mass  
-        • Other lesion  
-        • Pleural effusion  
-        • Pleural thickening  
-        • Pneumothorax  
-        • Pulmonary fibrosis  
-        
-        **Classes:**  
-        • Abnormal  
-        • Normal  
-        --
-        ⚠ For educational/research use only.
-        """
-    )
+    st.header("🫁 About CliniScan")
+    st.markdown("""
+    <div style="font-size:18px;">
+    <strong>Features:</strong><br>
+    🔎 <b>Fast Chest X-ray Analysis</b><br>
+    ⚡ Detects 14 conditions<br>
+    🎯 Visual explanations (Grad-CAM)<br>
+    <hr>
+    <strong>Detectable Conditions:</strong>  
+    - Aortic enlargement  
+    - Atelectasis  
+    - Calcification  
+    - Cardiomegaly  
+    - Consolidation  
+    - ILD  
+    - Infiltration  
+    - Lung Opacity  
+    - Nodule/Mass  
+    - Other lesion  
+    - Pleural effusion  
+    - Pleural thickening  
+    - Pneumothorax  
+    - Pulmonary fibrosis  
+    <hr>
+    <strong>Classes:</strong> <span style="color:green;">Normal</span>, <span style="color:red;">Abnormal</span>
+    <hr>
+    <span style="color:orange;">⚠ For educational, research, and non-clinical use only!</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("""
+<div style='text-align:center; font-size:20px;'>
+🔄 <b>Upload a chest X-ray image below to begin detection!</b>  
+Supported formats: JPG, JPEG, PNG
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("---")
 uploaded_file = st.file_uploader("📤 Upload Chest X-ray", type=["jpg", "jpeg", "png"])
@@ -186,16 +191,16 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     st.subheader("📷 Uploaded X-ray")
     st.image(image, use_column_width=True)
-    
+
     if clf_model is None or det_model is None:
         st.error("Model loading issue. Check credentials/model weights.")
         st.stop()
-    
+
     st.markdown("---")
     col1, col2 = st.columns([2,2])
-    
+
     with col1:
-        st.subheader("🔍 Overall Classification")
+        st.subheader("🔬 Model Confidence & Prediction")
         transform = transforms.Compose([
             transforms.Resize((512, 512)),
             transforms.ToTensor(),
@@ -204,23 +209,23 @@ if uploaded_file:
         img_tensor = transform(image)
         device = next(clf_model.parameters()).device
         img_tensor = img_tensor.to(device)
-        
+
         with torch.no_grad():
             preds = clf_model(img_tensor.unsqueeze(0))
             probs = torch.nn.functional.softmax(preds, dim=1)
             pred_class = torch.argmax(probs).item()
-        
+
         class_names = ["Abnormal", "Normal"]
-        
+
         st.markdown(f"**Prediction:** {class_names[pred_class]}")
         st.markdown(f"**Estimated confidence:** {probs[0][pred_class]:.2%}")
         st.write("**Class distribution:**")
         for i, name in enumerate(class_names):
             st.write(f"{name}: {probs[0][i].item():.2%}")
             st.progress(float(probs[0][i].item()))
-        
+
         st.markdown("---")
-        st.subheader("🧠 Grad-CAM Visual Explanation")
+        st.subheader("🧠 Grad-CAM Insights")
         st.markdown("Highlighted regions indicate areas that influenced the prediction (red/yellow is high focus).")
         heatmap, _ = generate_gradcam(clf_model, img_tensor)
         if heatmap is not None:
@@ -231,21 +236,22 @@ if uploaded_file:
             st.image(overlay, caption="Grad-CAM focus", use_column_width=True)
         else:
             st.warning("Unable to generate Grad-CAM at this time.")
-    
+
     with col2:
-        st.subheader("📦 Detected Abnormalities")
+        st.subheader("🩺 Detected Problems")
         with st.spinner("Scanning for abnormalities..."):
             results = det_model.predict(np.array(image), conf=0.25, verbose=False)
         res_img = results[0].plot()
         st.image(res_img, caption="Detected regions (Bounding Boxes)", use_column_width=True)
-        
+
         boxes = results[0].boxes
         if boxes is not None and len(boxes) > 0:
             st.markdown("**Top findings:**")
             for i in range(min(5, len(boxes))):
                 cls_id = int(boxes.cls[i])
                 conf = float(boxes.conf[i])
-                st.write(f"{i+1}. {det_model.names[cls_id]} ({conf:.2%} confidence)")
+                color = "🟢" if conf > 0.7 else ("🟡" if conf > 0.4 else "🔴")
+                st.write(f"{i+1}. {det_model.names[cls_id]} ({conf:.2%} confidence) {color}")
                 st.progress(conf)
             st.write(f"Total detections: {len(boxes)}")
             st.write(f"Average confidence: {float(boxes.conf.mean()):.2%}")
@@ -255,12 +261,11 @@ if uploaded_file:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: gray; font-size: 16px;'>
-<strong>⚠ DISCLAIMER:</strong>  
-This web application is intended for educational and research purposes only.<br>
-Do NOT use these results for clinical diagnosis or medical decision-making.<br>
-Consult a licensed healthcare professional for all medical interpretations.<br>
+<strong>🛑 DISCLAIMER:</strong><br>
+This app is for research and educational use only.<br>
+Medical decisions should always be made by qualified professionals.<br>
 <hr>
-Y Sherisha  
+Developed by Y Sherisha <br>
 <a href='https://github.com/Y-SHERISHA/CliniScan-Lung-Anormality-Detection'>GitHub Repository</a>
 </div>
 """, unsafe_allow_html=True)
