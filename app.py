@@ -12,17 +12,14 @@ from torchvision.models.feature_extraction import create_feature_extractor
 import os
 import gdown
 
-# Page configuration
+# --- PAGE CONFIG ---
 st.set_page_config(
     page_title="🫁 CliniScan - Chest X-ray Analyzer",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --------------------------------------------------------------------------
-# GOOGLE DRIVE MODEL DOWNLOAD
-# --------------------------------------------------------------------------
-
+# --- MODEL DOWNLOAD ---
 DETECTION_MODEL_ID = "1IzK4Y-wKDSLjLNUGv2tNDiaRyv0W2Iy6"
 CLASSIFICATION_MODEL_ID = "1Ao7o8DekO26M9DcsbwVVwTF3Fwkm7o6S"
 
@@ -54,10 +51,7 @@ def download_models():
 
 det_ready, clf_ready = download_models()
 
-# --------------------------------------------------------------------------
-# MODEL LOADING
-# --------------------------------------------------------------------------
-
+# --- MODEL LOADING ---
 class EfficientNetClassifier(nn.Module):
     def __init__(self, num_classes=2, dropout=0.3):
         super().__init__()
@@ -107,10 +101,7 @@ def load_detection_model():
 clf_model = load_classification_model()
 det_model = load_detection_model()
 
-# --------------------------------------------------------------------------
-# GRAD-CAM FOR EFFICIENTNET-B3
-# --------------------------------------------------------------------------
-
+# --- GRAD-CAM ---
 def generate_gradcam(model, img_tensor):
     if model is None:
         return None, None
@@ -136,16 +127,7 @@ def generate_gradcam(model, img_tensor):
         st.error(f"Grad-CAM error: {e}")
         return None, None
 
-# --------------------------------------------------------------------------
-# INTERFACE & UI
-# --------------------------------------------------------------------------
-
-st.title("🫁 CliniScan: Chest X-ray Analyzer")
-st.markdown("""
-Effortlessly analyze chest X-rays for lung abnormalities.<br>
-<b>Upload an image</b>, review AI findings, and explore visual explanations.<br>
-""", unsafe_allow_html=True)
-
+# --- SIDEBAR ---
 with st.sidebar:
     st.header("🫁 About CliniScan")
     st.markdown("""
@@ -177,9 +159,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+# --- HEADER & UPLOAD ---
+st.markdown("<h1 style='text-align:center;'>🫁 CliniScan: Chest X-ray Analyzer</h1>", unsafe_allow_html=True)
 st.markdown("""
-<div style='text-align:center; font-size:20px;'>
-🔄 <b>Upload a chest X-ray image below to begin detection!</b>  
+<div style='text-align:center; font-size:18px;'>
+🔄 <b>Upload a chest X-ray image below to begin detection!</b><br>
 Supported formats: JPG, JPEG, PNG
 </div>
 """, unsafe_allow_html=True)
@@ -195,12 +179,14 @@ if uploaded_file:
     if clf_model is None or det_model is None:
         st.error("Model loading issue. Check credentials/model weights.")
         st.stop()
-
     st.markdown("---")
-    col1, col2 = st.columns([2,2])
 
-    with col1:
-        st.subheader("🔬 Model Confidence & Prediction")
+    # --- MAIN LAYOUT ---
+    st.markdown("<style>div[data-testid=\"stHorizontalBlock\"] div:first-child {text-align: center;}</style>", unsafe_allow_html=True)
+    main_col1, main_col2 = st.columns([2,3])
+
+    with main_col1:
+        st.markdown("<h2 style='text-align:center;'>🧑‍⚕️ Model Confidence & Prediction</h2>", unsafe_allow_html=True)
         transform = transforms.Compose([
             transforms.Resize((512, 512)),
             transforms.ToTensor(),
@@ -217,15 +203,16 @@ if uploaded_file:
 
         class_names = ["Abnormal", "Normal"]
 
-        st.markdown(f"**Prediction:** {class_names[pred_class]}")
-        st.markdown(f"**Estimated confidence:** {probs[0][pred_class]:.2%}")
+        st.write(f"**Prediction:** {class_names[pred_class]}")
+        st.write(f"**Estimated confidence:** {probs[0][pred_class]:.2%}")
         st.write("**Class distribution:**")
         for i, name in enumerate(class_names):
             st.write(f"{name}: {probs[0][i].item():.2%}")
             st.progress(float(probs[0][i].item()))
 
+        # Grad-CAM
         st.markdown("---")
-        st.subheader("🧠 Grad-CAM Insights")
+        st.markdown("<h3 style='text-align:center;'>🧠 Grad-CAM Insights</h3>", unsafe_allow_html=True)
         st.markdown("Highlighted regions indicate areas that influenced the prediction (red/yellow is high focus).")
         heatmap, _ = generate_gradcam(clf_model, img_tensor)
         if heatmap is not None:
@@ -233,12 +220,12 @@ if uploaded_file:
             heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
             original_resized = np.array(image.resize((512, 512)))
             overlay = cv2.addWeighted(original_resized, 0.6, heatmap_colored, 0.4, 0)
-            st.image(overlay, caption="Grad-CAM focus", use_column_width=True)
+            st.image(overlay, caption="Grad-CAM Visualization", use_column_width=True)
         else:
             st.warning("Unable to generate Grad-CAM at this time.")
 
-    with col2:
-        st.subheader("🩺 Detected Problems")
+    with main_col2:
+        st.markdown("<h2 style='text-align:center;'>🩺 Detected Problems</h2>", unsafe_allow_html=True)
         with st.spinner("Scanning for abnormalities..."):
             results = det_model.predict(np.array(image), conf=0.25, verbose=False)
         res_img = results[0].plot()
@@ -246,13 +233,15 @@ if uploaded_file:
 
         boxes = results[0].boxes
         if boxes is not None and len(boxes) > 0:
-            st.markdown("**Top findings:**")
+            st.markdown("#### Top findings:")
+            findings_md = "| # | Condition | Confidence | Status |\n|---|---|---|---|\n"
+            def color_icon(conf):
+                return "🟢" if conf > 0.7 else ("🟡" if conf > 0.4 else "🔴")
             for i in range(min(5, len(boxes))):
                 cls_id = int(boxes.cls[i])
                 conf = float(boxes.conf[i])
-                color = "🟢" if conf > 0.7 else ("🟡" if conf > 0.4 else "🔴")
-                st.write(f"{i+1}. {det_model.names[cls_id]} ({conf:.2%} confidence) {color}")
-                st.progress(conf)
+                findings_md += f"| {i+1} | {det_model.names[cls_id]} | {conf:.2%} | {color_icon(conf)} |\n"
+            st.markdown(findings_md)
             st.write(f"Total detections: {len(boxes)}")
             st.write(f"Average confidence: {float(boxes.conf.mean()):.2%}")
         else:
