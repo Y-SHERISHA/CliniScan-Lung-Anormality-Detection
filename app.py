@@ -127,31 +127,15 @@ def generate_gradcam(model, img_tensor):
         st.error(f"Grad-CAM error: {e}")
         return None, None
 
-# --- SIDEBAR ---
+# --- SIDEBAR (Detectable Conditions section removed) ---
 with st.sidebar:
     st.header("🫁 About CliniScan")
     st.markdown("""
     <div style="font-size:18px;">
     <strong>Features:</strong><br>
     🔎 <b>Fast Chest X-ray Analysis</b><br>
-    ⚡ Detects 14 conditions<br>
+    ⚡ Detects many abnormalities<br>
     🎯 Visual explanations (Grad-CAM)<br>
-    <hr>
-    <strong>Detectable Conditions:</strong>  
-    - Aortic enlargement  
-    - Atelectasis  
-    - Calcification  
-    - Cardiomegaly  
-    - Consolidation  
-    - ILD  
-    - Infiltration  
-    - Lung Opacity  
-    - Nodule/Mass  
-    - Other lesion  
-    - Pleural effusion  
-    - Pleural thickening  
-    - Pneumothorax  
-    - Pulmonary fibrosis  
     <hr>
     <strong>Classes:</strong> <span style="color:green;">Normal</span>, <span style="color:red;">Abnormal</span>
     <hr>
@@ -159,8 +143,33 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# --- HEADER & UPLOAD ---
+# --- MAIN HEADER ---
 st.markdown("<h1 style='text-align:center;'>🫁 CliniScan: Chest X-ray Analyzer</h1>", unsafe_allow_html=True)
+
+# --- Detectable Conditions (NEW BLOCK) ---
+st.markdown("""
+<div style='border: 1px solid #ddd; border-radius: 8px; background: #fafafa; padding: 16px; margin-bottom: 20px;'>
+<h3 style='text-align:center;'>✨ Detectable Conditions</h3>
+<ul style="font-size:17px; margin-left: 30px;">
+  <li>Aortic enlargement</li>
+  <li>Atelectasis</li>
+  <li>Calcification</li>
+  <li>Cardiomegaly</li>
+  <li>Consolidation</li>
+  <li>Interstitial Lung Disease (ILD)</li>
+  <li>Infiltration</li>
+  <li>Lung Opacity</li>
+  <li>Nodule / Mass</li>
+  <li>Other lesion</li>
+  <li>Pleural effusion</li>
+  <li>Pleural thickening</li>
+  <li>Pneumothorax</li>
+  <li>Pulmonary fibrosis</li>
+</ul>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Upload Message and rest of your app follows ---
 st.markdown("""
 <div style='text-align:center; font-size:18px;'>
 🔄 <b>Upload a chest X-ray image below to begin detection!</b><br>
